@@ -193,6 +193,24 @@ pub fn send_ctrl(sock: &UdpSocket, xp_dst: &SocketAddr, values: &Control) -> Res
     Ok(())
 }
 
+pub fn get_dref(sock: &UdpSocket, xp_dst: &SocketAddr, dref: &[u8]) -> Result<f32, io::Error> {
+    // prepare the header datagram (only one dref at a time can be requested)
+    let header: &[u8] = b"GETD\x00\x01";
+    let dref_len: &[u8] = &dref.len().to_le_bytes();
+
+    let request: Vec<u8> = [header, &[dref_len[0]], &dref].concat();
+    // println!("request: {:?}", request);
+
+    send_udp(&sock, &xp_dst, &request).expect("Failed to send UDP packet");
+
+    let received_data = read_udp(&sock).expect("Failed to read UDP packet");
+    // let length: u8 = received_data[6..7][0];
+
+    let value = f32::from_le_bytes(received_data[7..].try_into().expect("slice has incorrect length"));
+
+    Ok(value)
+}
+
 fn bytes_to_float64(buffer: &[u8]) -> Result<f64, io::Error> {
     let mut buffer_arr: [u8; 8] = [0; 8];
     buffer_arr.copy_from_slice(&buffer[..8]);
