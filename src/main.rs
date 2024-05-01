@@ -3,22 +3,25 @@ use xplane_rust::pid::{PIDpitch, PIDroll, control_pid, throttle_up, throttle_dow
 use std::time::Duration;
 
 fn main() {
-    let (sock, xp_dst) = connect_xplane("127.0.0.1", 49009, 0, 1000).unwrap();
+    let (sock, xp_dst) = connect_xplane("192.168.1.174", 49009, 0, 1000).unwrap();
+    // let (sock, xp_dst) = connect_xplane("127.0.0.1", 49009, 0, 1000).unwrap();
 
     let pid_pitch = PIDpitch{
-        p: 0.04,
+        p: 0.042,
         i: 0.0001,
         d: 0.004,
     };
 
     let pid_roll = PIDroll{
-        p: 0.02,
+        p: 0.04,
         i: 0.0001,
-        d: 0.002,
+        d: 0.004,
     };
 
     let _ = control_pid(&sock, &xp_dst, &pid_pitch, &pid_roll);
 
+    // throttle_up(&sock, &xp_dst);
+    
     // let control_values = Control {
     //     pit_s: -998.0,
     //     rol_s: -998.0,

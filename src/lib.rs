@@ -281,7 +281,7 @@ pub mod pid{
     }
 
     pub fn control_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll) -> Result<(), io::Error> {
-        let max_altitude: f64 = 200.0;
+        let max_altitude: f64 = 2000.0;
         let mut elevator: f32 = 0.0;
         let mut aileron: f32 = 0.0;
         let mut velocity: f32 = 0.0;
@@ -430,7 +430,7 @@ pub mod pid{
                 Err(e) => velocity,
             };
 
-            if position.alt <= 190.0 && position.alt > 20.0{
+            if position.alt <= 195.0 && position.alt > 20.0{
                 throttle_up(&sock, &xp_dst);
             }
 
