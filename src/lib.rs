@@ -52,7 +52,7 @@ pub mod xpc{
         let mut buffer = vec![0; 16384];
         let (size, _) = match sock.recv_from(&mut buffer) {
             Ok(n) => n,
-            Err(e) => return Err("Did not received any data".to_string()),
+            Err(_e) => return Err("Did not received any data".to_string()),
         };
         buffer.truncate(size);
         Ok(buffer)
@@ -69,7 +69,7 @@ pub mod xpc{
 
         let received_data = match read_udp(&sock) {
             Ok(x) => x,
-            Err(e) => vec![0; 46],
+            Err(_e) => vec![0; 46],
         };
 
         // println!("Received data: {:?}", received_data);
@@ -143,7 +143,7 @@ pub mod xpc{
 
         let received_data = match read_udp(&sock) {
             Ok(x) => x,
-            Err(e) => vec![0; 27],
+            Err(_e) => vec![0; 27],
         };
 
 
@@ -220,7 +220,7 @@ pub mod xpc{
         
         let received_data = match read_udp(&sock) {
             Ok(value) => value,
-            Err(e) => vec![0; 11],
+            Err(_e) => vec![0; 11],
         };
 
         let value = match received_data.len() {
@@ -236,27 +236,11 @@ pub mod xpc{
 
         let mut buffer = vec![0; 16384];
         match sock.recv_from(&mut buffer) {
-            Ok(data_in_buffer) => {
+            Ok(_data_in_buffer) => {
                 Ok(())
             },
-            Err(e) => Ok(()),
+            Err(_e) => Ok(()),
         }
-    }
-
-    fn bytes_to_float64(buffer: &[u8]) -> Result<f64, io::Error> {
-        let mut buffer_arr: [u8; 8] = [0; 8];
-        buffer_arr.copy_from_slice(&buffer[..8]);
-
-        let float_value = f64::from_le_bytes(buffer_arr);
-        Ok(float_value)
-    }
-
-    fn bytes_to_float32(buffer: &[u8]) -> Result<f32, io::Error> {
-        let mut buffer_arr: [u8; 4] = [0; 4];
-        buffer_arr.copy_from_slice(&buffer[..4]);
-
-        let float_value = f32::from_le_bytes(buffer_arr);
-        Ok(float_value)
     }
 }
 
@@ -266,7 +250,7 @@ pub mod pid{
     use std::net::{SocketAddr, UdpSocket};
     use std::io;
     use std::time::Duration;
-    use crate::xpc::{Position, Control, connect_xplane, get_posi, send_posi, get_ctrl, send_ctrl, get_dref, clear_buffer};
+    use crate::xpc::{Position, Control, get_posi, send_posi, send_ctrl, get_dref, clear_buffer};
 
     pub struct PIDpitch{
         pub p: f32,
@@ -291,35 +275,35 @@ pub mod pid{
             gr: -998.0,
         };
 
-        send_posi(&sock, &xp_dst, &pos);
+        let _ = send_posi(&sock, &xp_dst, &pos);
 
         Ok(())
     }
 
     pub fn launch_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, max_altitude: f64) -> Result<(), io::Error>  {
-        let mut elevator: f32 = 0.0;
-        let mut aileron: f32 = 0.0;
-        let mut velocity: f32 = 0.0;
+        let mut elevator: f32;
+        let mut aileron: f32;
+        let mut velocity: f32;
         
         throttle_up(&sock, &xp_dst);
 
         let mut pitch = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/theta") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut pitch_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/Q") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut roll = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/phi") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut roll_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/P") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
-        clear_buffer(&sock);
+        let _ = clear_buffer(&sock);
         let mut position: Position = get_posi(&sock, &xp_dst).expect("Failed to get position");
         
         let mut pitch_integral: f32 = pitch;
@@ -345,19 +329,19 @@ pub mod pid{
 
             pitch = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/theta") {
                 Ok(value) => value,
-                Err(e) => pitch,
+                Err(_e) => pitch,
             };
             pitch_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/Q") {
                 Ok(value) => value,
-                Err(e) => pitch_rate,
+                Err(_e) => pitch_rate,
             };
             roll = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/phi") {
                 Ok(value) => value,
-                Err(e) => roll,
+                Err(_e) => roll,
             };
             roll_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/P") {
                 Ok(value) => value,
-                Err(e) => roll_rate,
+                Err(_e) => roll_rate,
             };
             
 
@@ -386,42 +370,42 @@ pub mod pid{
 
     pub fn land_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, alt_ignition: f64) -> Result<(), io::Error> {
 
-        let mut elevator: f32 = 0.0;
-        let mut aileron: f32 = 0.0;
+        let mut elevator: f32;
+        let mut aileron: f32;
         // let mut velocity: f32 = 0.0;
 
         let mut pitch = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/theta") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut pitch_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/Q") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut roll = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/phi") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut roll_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/P") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
-        clear_buffer(&sock);
+        let _ = clear_buffer(&sock);
 
         let mut position: Position = get_posi(&sock, &xp_dst).expect("Failed to get position");
         let mut pitch_integral: f32 = pitch;
         let mut roll_integral: f32 = roll;
         let mut is_on_ground = match get_dref(&sock, &xp_dst, b"sim/flightmodel/failures/onground_any") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
         let mut crash = match get_dref(&sock, &xp_dst, b"sim/flightmodel2/misc/has_crashed") {
             Ok(value) => value,
-            Err(e) => 0.0,
+            Err(_e) => 0.0,
         };
 
         // let mut i: i16 = 0;
-        while true {
+        loop {
             // i += 1;
 
             elevator = match -pitch * pid_pitch.p + pitch_rate * pid_pitch.d + pitch_integral * pid_pitch.i {
@@ -438,19 +422,19 @@ pub mod pid{
 
             pitch = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/theta") {
                 Ok(value) => value,
-                Err(e) => pitch,
+                Err(_e) => pitch,
             };
             pitch_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/Q") {
                 Ok(value) => value,
-                Err(e) => pitch_rate,
+                Err(_e) => pitch_rate,
             };
             roll = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/phi") {
                 Ok(value) => value,
-                Err(e) => roll,
+                Err(_e) => roll,
             };
             roll_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/P") {
                 Ok(value) => value,
-                Err(e) => roll_rate,
+                Err(_e) => roll_rate,
             };
 
 
@@ -503,12 +487,12 @@ pub mod pid{
 
             is_on_ground = match get_dref(&sock, &xp_dst, b"sim/flightmodel/failures/onground_any") {
                 Ok(value) => value,
-                Err(e) => is_on_ground,
+                Err(_e) => is_on_ground,
             };
 
             crash = match get_dref(&sock, &xp_dst, b"sim/flightmodel2/misc/has_crashed") {
                 Ok(value) => value,
-                Err(e) => crash,
+                Err(_e) => crash,
             };
             // println!("crash: {}", crash);
 
