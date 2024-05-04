@@ -280,8 +280,23 @@ pub mod pid{
         pub d: f32,
     }
 
-    pub fn control_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll) -> Result<(), io::Error> {
-        let max_altitude: f64 = 2000.0;
+    pub fn set_rocket_altitude(sock: &UdpSocket, xp_dst: &SocketAddr, altitude: f64) -> Result<(), io::Error> {
+        let pos = Position{
+            lat: -998.0,
+            lng: -998.0,
+            alt: altitude,
+            pit: -998.0,
+            rol: -998.0,
+            trh: -998.0,
+            gr: -998.0,
+        };
+
+        send_posi(&sock, &xp_dst, &pos);
+
+        Ok(())
+    }
+
+    pub fn launch_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, max_altitude: f64) -> Result<(), io::Error>  {
         let mut elevator: f32 = 0.0;
         let mut aileron: f32 = 0.0;
         let mut velocity: f32 = 0.0;
@@ -366,17 +381,48 @@ pub mod pid{
 
         throttle_down(&sock, &xp_dst);
 
+        Ok(())
+    }
+
+    pub fn land_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, alt_ignition: f64) -> Result<(), io::Error> {
+
+        let mut elevator: f32 = 0.0;
+        let mut aileron: f32 = 0.0;
+        // let mut velocity: f32 = 0.0;
+
+        let mut pitch = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/theta") {
+            Ok(value) => value,
+            Err(e) => 0.0,
+        };
+        let mut pitch_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/Q") {
+            Ok(value) => value,
+            Err(e) => 0.0,
+        };
+        let mut roll = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/phi") {
+            Ok(value) => value,
+            Err(e) => 0.0,
+        };
+        let mut roll_rate = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/P") {
+            Ok(value) => value,
+            Err(e) => 0.0,
+        };
+        clear_buffer(&sock);
+
+        let mut position: Position = get_posi(&sock, &xp_dst).expect("Failed to get position");
+        let mut pitch_integral: f32 = pitch;
+        let mut roll_integral: f32 = roll;
         let mut is_on_ground = match get_dref(&sock, &xp_dst, b"sim/flightmodel/failures/onground_any") {
             Ok(value) => value,
             Err(e) => 0.0,
         };
-                
         let mut crash = match get_dref(&sock, &xp_dst, b"sim/flightmodel2/misc/has_crashed") {
             Ok(value) => value,
             Err(e) => 0.0,
         };
 
+        // let mut i: i16 = 0;
         while true {
+            // i += 1;
 
             elevator = match -pitch * pid_pitch.p + pitch_rate * pid_pitch.d + pitch_integral * pid_pitch.i {
                 x if x > 1.0 => 1.0,
@@ -411,35 +457,36 @@ pub mod pid{
             pitch_integral -= pitch;
             roll_integral -= roll;
 
-            // println!("elevator: {}", elevator);
-            // println!("aileron: {}", aileron);
+            // println!("{} elevator: {}", i, elevator);
+            // println!("{} aileron: {}", i, aileron);
 
             let control_values = Control {
                 pit_s: elevator,
                 rol_s: aileron,
                 rud_s: -998.0,
                 thr_s: -998.0,
-                gr_s: 0,
+                gr_s: 1,
                 fl_s: -998.0,
                 spd_brk: -998.0,
             };
             let _ = send_ctrl(&sock, &xp_dst, &control_values);
 
-            velocity = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/vh_ind") {
-                Ok(value) => value,
-                Err(e) => velocity,
-            };
+            // velocity = match get_dref(&sock, &xp_dst, b"sim/flightmodel/position/vh_ind") {
+            //     Ok(value) => value,
+            //     Err(e) => velocity,
+            // };
 
-            if position.alt <= 195.0 && position.alt > 20.0{
+            if position.alt <= alt_ignition && position.alt > 20.0 {
                 throttle_up(&sock, &xp_dst);
             }
 
-            else if position.alt <= 20.0 && velocity >= -10.0 {
-                throttle_down(&sock, &xp_dst);
-            }
-            clear_buffer(&sock);
+            // else if position.alt <= 20.0 && velocity >= -10.0 {
+            //     throttle_down(&sock, &xp_dst);
+            // }
+
             position = get_posi(&sock, &xp_dst).expect("Failed to get position");
 
+            // open the gear (landing legs)
             // if position.alt <= 50.0 {
 
             //     let control_values = Control {
