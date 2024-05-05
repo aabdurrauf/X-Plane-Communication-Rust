@@ -277,7 +277,7 @@ pub mod pid{
         pub d: f32,
     }
 
-    pub fn set_rocket_altitude(sock: &UdpSocket, xp_dst: &SocketAddr, altitude: f64) -> Result<(), io::Error> {
+    pub fn set_rocket_altitude(sock: &UdpSocket, xp_dst: &SocketAddr, altitude: f64) {
         let pos = Position{
             lat: -998.0,
             lng: -998.0,
@@ -289,11 +289,9 @@ pub mod pid{
         };
 
         let _ = send_posi(&sock, &xp_dst, &pos);
-
-        Ok(())
     }
 
-    pub fn launch_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, max_altitude: f64) -> Result<(), io::Error>  {
+    pub fn launch_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, max_altitude: f64) {
         let mut elevator: f32;
         let mut aileron: f32;
         let mut velocity: f32;
@@ -357,7 +355,6 @@ pub mod pid{
                 Err(_e) => roll_rate,
             };
             
-
             pitch_integral -= pitch;
             roll_integral -= roll;
 
@@ -377,11 +374,9 @@ pub mod pid{
         }
 
         throttle_down(&sock, &xp_dst);
-
-        Ok(())
     }
 
-    pub fn land_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, alt_ignition: f64) -> Result<(), io::Error> {
+    pub fn land_rocket_pid(sock: &UdpSocket, xp_dst: &SocketAddr, pid_pitch: &PIDpitch, pid_roll: &PIDroll, alt_ignition: f64) {
 
         let mut elevator: f32;
         let mut aileron: f32;
@@ -514,7 +509,6 @@ pub mod pid{
                 break;
             }
         }
-        Ok(())
     }
 
     pub fn throttle_up(sock: &UdpSocket, xp_dst: &SocketAddr) {
