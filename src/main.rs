@@ -19,12 +19,12 @@ fn main() {
     };
 
     // autonomous launch and landing
-    let _ = launch_rocket_pid(&sock, &xp_dst, &pid_pitch, &pid_roll, 200.0);
-    let _ = land_rocket_pid(&sock, &xp_dst, &pid_pitch, &pid_roll, 190.0);
+    // let _ = launch_rocket_pid(&sock, &xp_dst, &pid_pitch, &pid_roll, 200.0);
+    // let _ = land_rocket_pid(&sock, &xp_dst, &pid_pitch, &pid_roll, 190.0);
 
     // autonomous landing from specified altitude
-    // let _ = set_rocket_altitude(&sock, &xp_dst, 1000.0);
-    // let _ = land_rocket_pid(&sock, &xp_dst, &pid_pitch, &pid_roll, 670.0);
+    let _ = set_rocket_altitude(&sock, &xp_dst, 1000.0);
+    let _ = land_rocket_pid(&sock, &xp_dst, &pid_pitch, &pid_roll, 670.0);
 
 
 

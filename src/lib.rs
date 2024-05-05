@@ -34,17 +34,27 @@ pub mod xpc{
         let sock = UdpSocket::bind(client_addr).map_err(|e| e.to_string())?;
         sock.set_read_timeout(Some(std::time::Duration::from_millis(timeout))).map_err(|e| e.to_string())?;
 
-        println!("Connected to X-Plane");
+        let _ = match test_connection(&sock, &xp_dst) {
+            Ok(_) => println!("Connected to X-Plane"),
+            Err(_e) => return Err(_e),
+        };
 
         Ok((sock, xp_dst))
     }
 
-    fn send_udp(sock: &UdpSocket, xp_dst: &std::net::SocketAddr, buffer: &[u8]) -> Result<(), io::Error> {
+    fn test_connection(sock: &UdpSocket, xp_dst: &SocketAddr) -> Result<(), String> {
+        match get_dref(&sock, &xp_dst, b"sim/test/test_float") {
+            Ok(_) => Ok(()),
+            Err(_e) => return Err("Failed to connect to X-Plane".to_string()),
+        }
+    }
+
+    fn send_udp(sock: &UdpSocket, xp_dst: &std::net::SocketAddr, buffer: &[u8]) -> Result<(), String> {
         if buffer.is_empty() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput, "send_udp: buffer is empty."));
+            return Err("Error: The buffer is empty".to_string());
         }
 
-        sock.send_to(buffer, *xp_dst)?;
+        sock.send_to(buffer, *xp_dst).expect("couldn't send data");
         Ok(())
     }
 
@@ -58,7 +68,7 @@ pub mod xpc{
         Ok(buffer)
     }
 
-    pub fn get_posi(sock: &UdpSocket, xp_dst: &SocketAddr) -> Result<Position, io::Error> {
+    pub fn get_posi(sock: &UdpSocket, xp_dst: &SocketAddr) -> Result<Position, String> {
         // function to get the position of the aircraft
         let mut pos = Position{lat:0.0, lng:0.0, alt:0.0, pit:0.0, rol:0.0, trh:0.0, gr:0.0, };
 
@@ -68,6 +78,8 @@ pub mod xpc{
         send_udp(&sock, &xp_dst, request).expect("Failed to send UDP packet");
 
         let received_data = match read_udp(&sock) {
+            Ok(x) if x.len() >= 15 => x,
+            Ok(x) if x.len() < 15 => vec![0; 46],
             Ok(x) => x,
             Err(_e) => vec![0; 46],
         };
@@ -111,7 +123,7 @@ pub mod xpc{
         Ok(pos)
     }
 
-    pub fn send_posi(sock: &UdpSocket, xp_dst: &SocketAddr, values: &Position) -> Result<(), io::Error> {
+    pub fn send_posi(sock: &UdpSocket, xp_dst: &SocketAddr, values: &Position) -> Result<(), String> {
         // set the header of the datagram to "POSI 0"
         let header: &[u8] = b"POSI\x00\x00";
 
@@ -132,7 +144,7 @@ pub mod xpc{
         Ok(())
     }
 
-    pub fn get_ctrl(sock: &UdpSocket, xp_dst: &SocketAddr) -> Result<Control, io::Error> {
+    pub fn get_ctrl(sock: &UdpSocket, xp_dst: &SocketAddr) -> Result<Control, String> {
         // function to get the position of the aircraft
         let mut ctrl = Control{pit_s:0.0, rol_s:0.0, rud_s:0.0, thr_s:0.0, gr_s:0, fl_s:0.0, spd_brk: 0.0};
 
@@ -181,7 +193,7 @@ pub mod xpc{
         Ok(ctrl)
     }
 
-    pub fn send_ctrl(sock: &UdpSocket, xp_dst: &SocketAddr, values: &Control) -> Result<(), io::Error> {
+    pub fn send_ctrl(sock: &UdpSocket, xp_dst: &SocketAddr, values: &Control) -> Result<(), String> {
         // set the header of the datagram to "CTRL 0"
         let header: &[u8] = b"CTRL\x00";
 
@@ -205,7 +217,7 @@ pub mod xpc{
         Ok(())
     }
 
-    pub fn get_dref(sock: &UdpSocket, xp_dst: &SocketAddr, dref: &[u8]) -> Result<f32, io::Error> {
+    pub fn get_dref(sock: &UdpSocket, xp_dst: &SocketAddr, dref: &[u8]) -> Result<f32, String> {
         // prepare the header datagram (only one dref at a time can be requested)
         let header: &[u8] = b"GETD\x00\x01";
         let dref_len: &[u8] = &dref.len().to_le_bytes();
@@ -220,7 +232,8 @@ pub mod xpc{
         
         let received_data = match read_udp(&sock) {
             Ok(value) => value,
-            Err(_e) => vec![0; 11],
+            // Err(_e) => vec![0; 11],
+            Err(_e) => return Err(_e),
         };
 
         let value = match received_data.len() {
